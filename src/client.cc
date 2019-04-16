@@ -24,8 +24,11 @@ bool ChatClient::setup(string address, int port)
    	cout << "Failed to create client socket." << endl;
         return false;
      }
+     cout << "Created a new TCP socket with file descriptor: " << sockfd << endl;
   }
 
+  cout << "Creating struct for socket address and port" 
+       << address << ":" << port << endl;
   int result = inet_aton(address.c_str(), &server.sin_addr);  
 
   // Check if successful
@@ -47,6 +50,8 @@ bool ChatClient::setup(string address, int port)
      cout << "Failed to create connection to server." << endl;
      return false;
   }
+  cout << "Connected to server!" << endl;
+
   return true;
 }
 
