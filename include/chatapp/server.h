@@ -15,6 +15,7 @@ using namespace std;
 enum Error_Codes
 {
    SUCCESS,
+   CLI_ERROR,
    CONFIG_FILE_ERROR,
    SOCK_CREATE_FAILURE,
    SOCK_BIND_FAILURE,
@@ -24,7 +25,7 @@ enum Error_Codes
 class ChatServer
 {
    public:
-   int sockfd, newsockfd, n, pid;
+   int sockfd, n, pid;
    struct sockaddr_in serverAddress;
    struct sockaddr_in clientAddress;
    pthread_t serverThread;
@@ -35,7 +36,7 @@ class ChatServer
    int setup(int port);
    void ready();
    string getMessage();
-   void Send(string msg);
+   static void Send(string msg, int clientfd);
    void clean();
    void detach();
    private:

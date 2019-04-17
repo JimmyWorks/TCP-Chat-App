@@ -8,9 +8,16 @@ void end_client(int signum)
    exit(0);   
 }
 
-int main()
+int main(int argc, char *argv[])
 {
    signal(SIGINT, end_client);
+
+   if(argc != 1)
+   {
+      cout << "Usage:" << endl;
+      cout << "chat_client [port number]"  << endl << endl;
+      exit(CLI_ERROR);
+   }
 
    ifstream userConfig;
    userConfig.open(USER_CONFIG);
@@ -25,6 +32,8 @@ int main()
    string buffer, line;
    while( getline(userConfig, line))
       buffer += line;
+
+   userConfig.close();
    rapidjson::Document d;
    d.Parse(buffer.c_str());
    if(!d.IsObject())
@@ -36,15 +45,18 @@ int main()
    string username = (d["user"].GetObject())["name"].GetString();
    string serverAddr = d["server"].GetString();
 
-   chatclient.setup(serverAddr, CLIENT_PORT);
+   chatclient.setup(serverAddr, SERV_PORT);
+
    while(true)
    {
       	srand(time(NULL));
-	chatclient.sendme(to_string(rand()%25000));
+        string newMsg = to_string(rand()%25000);
+        cout << "Sending: " << newMsg << endl;
+	chatclient.sendme(newMsg);
 	string rec = chatclient.receive();
 	if( rec != "" )
 	{
-		cout << "Server Response:" << rec << endl;
+		cout << "Response:" << rec << endl;
 	}
 	sleep(1);
    }

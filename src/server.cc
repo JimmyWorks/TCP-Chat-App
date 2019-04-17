@@ -1,4 +1,5 @@
 #include "chatapp/server.h"
+#include <sstream>
 
 string ChatServer::Message;
 
@@ -49,19 +50,25 @@ int ChatServer::setup(int port)
 void ChatServer::Task(int arg)
 {
 	int n;
-	int newsockfd = arg;
+	int clientfd = arg;
 	char msg[MAXPACKET_SIZE];
 
 	while(1)
 	{
-		n = recv(newsockfd, msg, MAXPACKET_SIZE, 0);
+		n = recv(clientfd, msg, MAXPACKET_SIZE, 0);
 		if(n==0)
 		{
-		   close(newsockfd);
+                   cout << "CLOSING THIS CLIENT: " << to_string(clientfd) << endl;
+		   close(clientfd);
 		   break;
 		}
 		msg[n]=0;
+                cout << string(msg) << endl;
 		Message = string(msg);
+                stringstream reply;
+                reply << std::this_thread::get_id() << ": ACK";
+                string str = reply.str();
+                ChatServer::Send(str, clientfd);
                 // Do something with message
 	 }
 }
@@ -72,12 +79,12 @@ void ChatServer::ready()
 	while(true)
 	{
                 // Accept connection-based sockets  
-		newsockfd = accept(sockfd,(struct sockaddr*)&clientAddress,&sosize);
+		int temp = accept(sockfd,(struct sockaddr*)&clientAddress,&sosize);
 
 		string str = inet_ntoa(clientAddress.sin_addr);
                 cout << "Accepted new connection: " << str << 
                         ", Port: " << clientAddress.sin_port << endl;
-		std::thread newThread(&ChatServer::Task, newsockfd);
+		std::thread newThread(&ChatServer::Task, temp);
 		newThread.detach();
 	}
 }
@@ -87,9 +94,9 @@ string ChatServer::getMessage()
 	return Message;
 }
 
-void ChatServer::Send(string msg)
+void ChatServer::Send(string msg, int clientfd)
 {
-	send(newsockfd,msg.c_str(),msg.length(),0);
+	send(clientfd,msg.c_str(),msg.length(),0);
 }
 
 void ChatServer::clean()
@@ -101,5 +108,5 @@ void ChatServer::clean()
 void ChatServer::detach()
 {
 	close(sockfd);
-	close(newsockfd);
+        //TODO: Need to close each connection fd
 } 
