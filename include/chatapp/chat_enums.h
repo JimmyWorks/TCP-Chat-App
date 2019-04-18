@@ -26,6 +26,6 @@ enum Response_Codes
 {
    ACK,
    NACK
-}
+};
 
 #endif

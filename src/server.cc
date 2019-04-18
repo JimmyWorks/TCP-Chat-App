@@ -100,6 +100,7 @@ void ChatServer::Connection(int arg)
 
 void ChatServer::ready()
 {
+        cout << "Ready for new connections..." << endl;
 	socklen_t sosize  = sizeof(clientAddress);
 	while(true)
 	{

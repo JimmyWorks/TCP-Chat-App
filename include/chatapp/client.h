@@ -9,19 +9,21 @@
 #include <string.h>
 #include <signal.h>
 #include <iostream>
+#include <unistd.h>
 #include "chatapp/json_parser.h"
-#include "errorcodes.h"
+#include "chatapp/chat_enums.h"
 
 using namespace std;
 
 class ChatClient
 {
    private:
-      int sockfd;
-      bool online;
-      struct sockaddr_in server;
+     int sockfd;
+     struct sockaddr_in server;
 
    public:
+     bool online;
+
      ChatClient();
      bool setup(string address, int port = SERV_PORT);
      bool sendme(string message);

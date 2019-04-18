@@ -13,7 +13,7 @@
 #include <map>
 #include "chatapp/constants.h"
 #include "chatapp/user.h"
-#include "errorcodes.h"
+#include "chatapp/chat_enums.h"
 #include "chatapp/json_parser.h"
 
 using namespace std;

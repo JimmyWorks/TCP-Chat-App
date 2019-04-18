@@ -6,10 +6,11 @@
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-#include "chatapp/errorcodes.h"
+#include "chatapp/chat_enums.h"
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <stdio.h>
 
 using namespace std;
 

@@ -1,4 +1,11 @@
-sites
+# Build folder
+**/[Bb]uild
+**/[Bb]in
+
+# NFS files
+.nfs*
+
+# sites
 *.d
 
 # Compiled Object files

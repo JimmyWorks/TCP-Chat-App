@@ -8,6 +8,19 @@ void end_client(int signum)
    exit(0);   
 }
 
+void heartbeat(int arg)
+{
+   while(true)
+   {
+      usleep(ONLINE_TTL*1000000/2);
+      if(chatclient.online)
+      {
+         // SEND HEARTBEAT
+         cout << "Pulse..." << endl;
+      }
+   }
+}
+
 int main(int argc, char *argv[])
 {
    signal(SIGINT, end_client);
@@ -27,6 +40,14 @@ int main(int argc, char *argv[])
 
    chatclient.setup(serverAddr);
 
+   std::thread heartbeat_thread(&heartbeat, 0);
+   heartbeat_thread.detach();
+
+   cout << "Main thread sleeping 5 seconds..." << endl;
+   usleep(5*1000);
+   cout << "Main thread turning user online..." << endl;
+   chatclient.online = true;
+   
    while(true)
    {
       	srand(time(NULL));
