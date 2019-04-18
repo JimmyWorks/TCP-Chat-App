@@ -12,4 +12,20 @@ enum Error_Codes
    SOCK_LISTEN_FAILURE
 };
 
+enum Op_Codes
+{
+   HEARTBEAT,
+   CONN_REQ,
+   CONN_TERM,
+   CHAT_REQ,
+   CHAT_TERM,
+   CHAT_MESSAGE
+};
+
+enum Response_Codes
+{
+   ACK,
+   NACK
+}
+
 #endif
