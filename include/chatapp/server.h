@@ -9,38 +9,30 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <thread>
+#include <sstream>
+#include <map>
 #include "chatapp/constants.h"
-using namespace std;
+#include "chatapp/user.h"
+#include "errorcodes.h"
+#include "chatapp/json_parser.h"
 
-enum Error_Codes
-{
-   SUCCESS,
-   CLI_ERROR,
-   CONFIG_FILE_ERROR,
-   SOCK_CREATE_FAILURE,
-   SOCK_BIND_FAILURE,
-   SOCK_LISTEN_FAILURE
-};
+using namespace std;
 
 class ChatServer
 {
    public:
-   int sockfd, n, pid;
-   struct sockaddr_in serverAddress;
-   struct sockaddr_in clientAddress;
-   pthread_t serverThread;
-   char msg[MAXPACKET_SIZE];
+   int sockfd;
+   struct sockaddr_in serverAddress, clientAddress;
 
-
-   static string Message;
    int setup(int port);
    void ready();
-   string getMessage();
-   static void Send(string msg, int clientfd);
-   void clean();
    void detach();
+
+   static std::map<string,User> users;
+
    private:
-   static void Task(int arg);
+   static void Connection(int clientfd);
+   static void Send(string msg, int clientfd);
 };
 
 #endif

@@ -15,37 +15,17 @@ int main(int argc, char *argv[])
    if(argc != 1)
    {
       cout << "Usage:" << endl;
-      cout << "chat_client [port number]"  << endl << endl;
+      cout << "./chat_client"  << endl << endl;
+      cout << "User and connection settings can be updated in config/user.config" << endl;
       exit(CLI_ERROR);
    }
 
-   ifstream userConfig;
-   userConfig.open(USER_CONFIG);
-   if(!userConfig.is_open())
-   {
-      cout << "Failed to open user config file..." << endl;
-      exit(CONFIG_FILE_ERROR);
-   }
-   else
-      cout << "Opened user config file..." << endl;
-
-   string buffer, line;
-   while( getline(userConfig, line))
-      buffer += line;
-
-   userConfig.close();
-   rapidjson::Document d;
-   d.Parse(buffer.c_str());
-   if(!d.IsObject())
-   {
-      cout << "Failed to parse user config..." << endl;
-   }
-   cout << "Successfully parsed config..." << endl;
+   rapidjson::Document d = JsonParser::Parse(USER_CONFIG);
 
    string username = (d["user"].GetObject())["name"].GetString();
    string serverAddr = d["server"].GetString();
 
-   chatclient.setup(serverAddr, SERV_PORT);
+   chatclient.setup(serverAddr);
 
    while(true)
    {

@@ -9,10 +9,8 @@
 #include <string.h>
 #include <signal.h>
 #include <iostream>
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-#include <fstream>
+#include "chatapp/json_parser.h"
+#include "errorcodes.h"
 
 using namespace std;
 
@@ -20,13 +18,12 @@ class ChatClient
 {
    private:
       int sockfd;
-      std::string address;
-      int port;
+      bool online;
       struct sockaddr_in server;
 
    public:
      ChatClient();
-     bool setup(string address, int port);
+     bool setup(string address, int port = SERV_PORT);
      bool sendme(string message);
      string receive(int size = MAXPACKET_SIZE); 
      string read();

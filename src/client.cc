@@ -4,8 +4,7 @@
 ChatClient::ChatClient()
 {
    sockfd = -1;
-   port = 0;
-   address = "";
+   online = false;
 }
 
 // Chat client 
@@ -65,6 +64,9 @@ bool ChatClient::sendme(string message)
    }
    return false;
 }
+
+// Log in
+
 
 // Receive
 string ChatClient::receive(int size)

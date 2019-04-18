@@ -1,10 +1,27 @@
 #include "chatapp/server.h"
-#include <sstream>
 
-string ChatServer::Message;
+std::map<string, User> ChatServer::users;
 
 int ChatServer::setup(int port)
 {
+   rapidjson::Document d = JsonParser::Parse(USER_DB);
+
+   const rapidjson::Value& userObjs = d["users"];
+   for(rapidjson::SizeType i = 0; i < userObjs.Size(); i++)
+   {
+      string uname = userObjs[i].GetObject()["username"].GetString();
+      string pword = userObjs[i].GetObject()["password"].GetString();
+      
+      users[uname] = User(uname, pword); 
+   }
+
+   cout << "Users:" << endl;
+   for(std::map<string, User>::iterator it = users.begin(); it != users.end(); ++it)
+   {
+      cout << it->first <<  " - " << it->second.password << endl;
+   } 
+
+
    // Setup a IPv4 TCP connection
    // socket()
    sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,7 +64,7 @@ int ChatServer::setup(int port)
    return 0;
 }
 
-void ChatServer::Task(int arg)
+void ChatServer::Connection(int arg)
 {
 	int n;
 	int clientfd = arg;
@@ -55,6 +72,9 @@ void ChatServer::Task(int arg)
 
 	while(1)
 	{
+                // Clear previous message
+	        memset(msg, 0, MAXPACKET_SIZE);
+                // Get new message
 		n = recv(clientfd, msg, MAXPACKET_SIZE, 0);
 		if(n==0)
 		{
@@ -62,14 +82,19 @@ void ChatServer::Task(int arg)
 		   close(clientfd);
 		   break;
 		}
+                // Make sure buffer is null terminated
 		msg[n]=0;
+                // Print message received from client
                 cout << string(msg) << endl;
-		Message = string(msg);
+
+                // HANDLE THE MESSAGE
+                
+                // Send reply 
                 stringstream reply;
                 reply << std::this_thread::get_id() << ": ACK";
                 string str = reply.str();
                 ChatServer::Send(str, clientfd);
-                // Do something with message
+
 	 }
 }
 
@@ -84,25 +109,15 @@ void ChatServer::ready()
 		string str = inet_ntoa(clientAddress.sin_addr);
                 cout << "Accepted new connection: " << str << 
                         ", Port: " << clientAddress.sin_port << endl;
-		std::thread newThread(&ChatServer::Task, temp);
+		std::thread newThread(&ChatServer::Connection, temp);
 		newThread.detach();
 	}
 }
 
-string ChatServer::getMessage()
-{
-	return Message;
-}
-
+// Static method for sending messages to client
 void ChatServer::Send(string msg, int clientfd)
 {
 	send(clientfd,msg.c_str(),msg.length(),0);
-}
-
-void ChatServer::clean()
-{
-	Message = "";
-	memset(msg, 0, MAXPACKET_SIZE);
 }
 
 void ChatServer::detach()
