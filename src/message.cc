@@ -26,8 +26,8 @@ string ChatMessage::create(int opcode, int ack, string message)
 
 string ChatMessage::create(int opcode, int ack, string user, string message)
 {
-
-   int message_size = MAXPACKET_SIZE - USER_SIZE - 2;
+   string _user = user;
+   int u_size = user.length();
 
    if(opcode < 0 || opcode >= INVALID_OP)
    {
@@ -41,40 +41,24 @@ string ChatMessage::create(int opcode, int ack, string user, string message)
    }
    if(user.length() > USER_SIZE)
    {
-      cout << "Username \"" << user << "\" is longer than username limit: " << to_string(USER_SIZE) << endl;
+      cout << "Username \"" << user << "\" is longer than username limit: " 
+           << to_string(USER_SIZE) << endl;
       exit(MESSAGE_ERROR);
    }
-   if(message.length() > message_size)
+   if(message.length() > MAXPACKET_SIZE-USER_SIZE-OPCODE_SIZE-ACK_SIZE)
    {
-      cout << "Message is longer than message size limit: " << to_string(message_size) << endl;
+      cout << "Message length is " << message.length() 
+           << " is longer than message size limit: " 
+           << MAXPACKET_SIZE-USER_SIZE-OPCODE_SIZE-ACK_SIZE << endl;
       exit(MESSAGE_ERROR);
    }
 
-   for(int i = 0; i < (USER_SIZE-user.length()); i++)
+   // Fill in unused space with '$' for user
+   for(int i = 0; i < (USER_SIZE-u_size); i++)
    {
-      user += '$';
+      _user += '$';
    }
 
-   string msg = to_string(opcode) + to_string(ack) + user + message;
-/* 
-   switch(opcode)
-   {
-      case HEARTBEAT:
-         break;
-      case CONN_REQ:
-         break;
-      case CONN_TERM:
-         break;
-      case CHAT_REQ:
-         break;
-      case CHAT_TERM:
-         break;
-      case CHAT_MESSAGE:
-         break;
-      case default:
-         cout << "Invalid operation not supported..." << endl;
-         exit(INVALID_OPCODE);
-   }
-*/
+   string msg = to_string(opcode) + to_string(ack) + _user + message;
    return msg;
 }

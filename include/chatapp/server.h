@@ -34,6 +34,7 @@ class ChatServer
    private:
    static void Connection(int clientfd);
    static void Send(string msg, int clientfd);
+   static string HandleMessage(string msg);
 };
 
 #endif

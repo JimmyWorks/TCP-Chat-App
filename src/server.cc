@@ -88,14 +88,79 @@ void ChatServer::Connection(int arg)
                 cout << string(msg) << endl;
 
                 // HANDLE THE MESSAGE
-                
+                string reply = ChatServer::HandleMessage(msg);
+/*
                 // Send reply 
                 stringstream reply;
                 reply << std::this_thread::get_id() << ": ACK";
                 string str = reply.str();
-                ChatServer::Send(str, clientfd);
+                */
+                ChatServer::Send(reply, clientfd);
 
 	 }
+}
+
+string ChatServer::HandleMessage(string msg)
+{
+   string reply = "";
+
+   int opcode = stoi(msg.substr(0, OPCODE_SIZE));
+   int ack = stoi(msg.substr(0+OPCODE_SIZE, ACK_SIZE));
+   string user = msg.substr(OPCODE_SIZE+ACK_SIZE, USER_SIZE);
+   string message = msg.substr((OPCODE_SIZE+ACK_SIZE+USER_SIZE), 
+                    (msg.length() - USER_SIZE - ACK_SIZE - OPCODE_SIZE));
+
+   cout << "Handling..." << endl;
+   cout << "op: " << opcode << endl;
+   cout << "ack: " << ack << endl;
+   cout << "user: " << user << endl;
+   cout << "message: " << message << endl;
+   cout << "done" << endl;
+ 
+   switch(opcode)
+   {
+      case HEARTBEAT:
+         // TODO: Get list of users online
+         reply = ChatMessage::create((int)HEARTBEAT, (int)ACK, user, "<list of users>");
+         break;
+      case CONN_REQ:
+         // Check user and password
+         // If success:
+         // turn online
+         reply = ChatMessage::create((int)CONN_REQ, (int)ACK, user, "");
+         // If failure:
+         // reply with NACK
+         break;
+      case CONN_TERM:
+         // turn offline
+         // if active chat, send message to other chatter
+         reply = ChatMessage::create((int)CONN_TERM, (int)ACK);
+         break;
+      case CHAT_REQ:
+         // Check if user is online
+         // if online:
+         reply = ChatMessage::create((int)CHAT_REQ, (int)ACK, user, ""); 
+         // else
+         // NACK
+         break;
+      case CHAT_TERM:
+         // send term to other chatter
+         reply = ChatMessage::create((int)CHAT_TERM, (int)ACK);
+         break;
+      case CHAT_MESSAGE:
+         // check if other chatter online
+         // if online
+         // send message to the other chatter
+         reply = ChatMessage::create((int)CHAT_MESSAGE, (int)ACK);
+         // else
+         // NACK
+         break;
+      default:
+         cout << "Invalid operation not supported..." << endl;
+         exit(INVALID_OPCODE);
+   }
+
+   return reply;
 }
 
 void ChatServer::ready()
