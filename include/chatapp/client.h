@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include "chatapp/json_parser.h"
 #include "chatapp/chat_enums.h"
+#include "chatapp/message.h"
 
 using namespace std;
 
@@ -23,12 +24,12 @@ class ChatClient
 
    public:
      bool online;
+     string username, otheruser;
 
      ChatClient();
      bool setup(string address, int port = SERV_PORT);
-     bool sendme(string message);
-     string receive(int size = MAXPACKET_SIZE); 
-     string read();
+     bool Send(string message);
+     string Receive(int size = MAXPACKET_SIZE); 
      void destroy();
 };
 

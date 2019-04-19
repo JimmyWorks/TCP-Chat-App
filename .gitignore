@@ -1,6 +1,6 @@
 # Build folder
-**/[Bb]uild
-**/[Bb]in
+[Bb]uild
+[Bb]in
 
 # NFS files
 .nfs*

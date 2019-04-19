@@ -15,6 +15,7 @@
 #include "chatapp/user.h"
 #include "chatapp/chat_enums.h"
 #include "chatapp/json_parser.h"
+#include "chatapp/message.h"
 
 using namespace std;
 

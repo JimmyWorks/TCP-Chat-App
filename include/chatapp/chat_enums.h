@@ -9,7 +9,9 @@ enum Error_Codes
    FILE_PARSE_ERROR,
    SOCK_CREATE_FAILURE,
    SOCK_BIND_FAILURE,
-   SOCK_LISTEN_FAILURE
+   SOCK_LISTEN_FAILURE,
+   INVALID_OPCODE,
+   MESSAGE_ERROR
 };
 
 enum Op_Codes
@@ -19,7 +21,8 @@ enum Op_Codes
    CONN_TERM,
    CHAT_REQ,
    CHAT_TERM,
-   CHAT_MESSAGE
+   CHAT_MESSAGE,
+   INVALID_OP
 };
 
 enum Response_Codes

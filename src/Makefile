@@ -18,10 +18,12 @@ PROJECTNAME = TCP_Chat
 SERVER_SRC = 	server.cc \
 		server_driver.cc \
                 json_parser.cc \
-                user.cc
+                user.cc\
+                message.cc
 CLIENT_SRC = 	client.cc \
 		client_driver.cc \
-                json_parser.cc
+                json_parser.cc \
+                message.cc
 
  # Executables
 SERVER_EXE = chat_service

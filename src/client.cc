@@ -5,6 +5,8 @@ ChatClient::ChatClient()
 {
    sockfd = -1;
    online = false;
+   username = "";
+   otheruser = "";
 }
 
 // Chat client 
@@ -55,7 +57,7 @@ bool ChatClient::setup(string address, int port)
 }
 
 //  
-bool ChatClient::sendme(string message)
+bool ChatClient::Send(string message)
 {
    if(sockfd != -1)
    {
@@ -69,7 +71,7 @@ bool ChatClient::sendme(string message)
 
 
 // Receive
-string ChatClient::receive(int size)
+string ChatClient::Receive(int size)
 {
         char buffer[size];
 	memset(&buffer[0], 0, sizeof(buffer));
@@ -82,24 +84,6 @@ string ChatClient::receive(int size)
   	}
 	buffer[size-1]='\0';
   	return buffer;
-}
-
-// Read
-string ChatClient::read()
-{
-   char buffer[1] = {};
-   string reply;
-
-   while (buffer[0] != '\n') 
-   {
-      if( recv(sockfd , buffer , sizeof(buffer) , 0) < 0)
-      {
-         cout << "receive failed!" << endl;
-	 return nullptr;
-      }
-      reply += buffer[0];
-   }
-   return reply;
 }
 
 void ChatClient::destroy()
