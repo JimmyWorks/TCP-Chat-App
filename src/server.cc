@@ -15,7 +15,7 @@ int ChatServer::setup(int port)
       users[uname] = User(uname, pword); 
    }
 
-   cout << "Users:" << endl;
+   cout << "Demo users:" << endl;
    for(std::map<string, User>::iterator it = users.begin(); it != users.end(); ++it)
    {
       cout << it->first <<  " - " << it->second.password << endl;
@@ -87,77 +87,177 @@ void ChatServer::Connection(int arg)
                 // Print message received from client
                 cout << string(msg) << endl;
 
-                // HANDLE THE MESSAGE
-                string reply = ChatServer::HandleMessage(msg);
-/*
-                // Send reply 
-                stringstream reply;
-                reply << std::this_thread::get_id() << ": ACK";
-                string str = reply.str();
-                */
+                // Handle the request
+                string reply = ChatServer::HandleMessage(msg, clientfd);
                 ChatServer::Send(reply, clientfd);
 
 	 }
 }
 
-string ChatServer::HandleMessage(string msg)
+string ChatServer::HandleMessage(string msg, int clientfd)
 {
    string reply = "";
 
    int opcode = stoi(msg.substr(0, OPCODE_SIZE));
    int ack = stoi(msg.substr(0+OPCODE_SIZE, ACK_SIZE));
-   string user = msg.substr(OPCODE_SIZE+ACK_SIZE, USER_SIZE);
-   string message = msg.substr((OPCODE_SIZE+ACK_SIZE+USER_SIZE), 
-                    (msg.length() - USER_SIZE - ACK_SIZE - OPCODE_SIZE));
+   string user1 = msg.substr(OPCODE_SIZE+ACK_SIZE, USER_SIZE);
+   string user2 = msg.substr(OPCODE_SIZE+ACK_SIZE+USER_SIZE, USER_SIZE);
+   string message = msg.substr((OPCODE_SIZE+ACK_SIZE+USER_SIZE+USER_SIZE), 
+                    (msg.length() - USER_SIZE - USER_SIZE - ACK_SIZE - OPCODE_SIZE));
+
+   user1 = ChatMessage::removePad(user1);
+   user2 = ChatMessage::removePad(user2);
 
    cout << "Handling..." << endl;
    cout << "op: " << opcode << endl;
    cout << "ack: " << ack << endl;
-   cout << "user: " << user << endl;
+   cout << "user1: " << user1 << endl;
+   cout << "user2: " << user2 << endl;
    cout << "message: " << message << endl;
-   cout << "done" << endl;
- 
+
+   std::map<string, User>::iterator it;
+   std::map<string, User>::iterator it2;
    switch(opcode)
    {
       case HEARTBEAT:
-         // TODO: Get list of users online
-         reply = ChatMessage::create((int)HEARTBEAT, (int)ACK, user, "<list of users>");
+      {
+         // Get list of users online
+         string onlineusers = "";
+         for(it = users.begin(); it != users.end(); ++it)
+         {
+            if(it->second.online)
+            {
+               onlineusers += it->first + ";";
+            }
+         } 
+         reply = ChatMessage::create((int)HEARTBEAT, (int)ACK, user1, "", onlineusers);
          break;
+      }
+
       case CONN_REQ:
+      {
          // Check user and password
-         // If success:
-         // turn online
-         reply = ChatMessage::create((int)CONN_REQ, (int)ACK, user, "");
-         // If failure:
-         // reply with NACK
+         cout << "Searching for user: " << user1 << endl;
+         it = users.find(user1);
+        
+         if(it == users.end())
+         {
+            cout << "Could not find user..." << endl;
+            reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user1, "", "Invalid username.  Please try again...");
+         }
+         else if(it->second.password != message)
+         {
+            cout << "Invalid password..." << endl; 
+            reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user1, "", "Invalid password.  Please try again...");
+         }
+         else
+         {
+            cout << "Valid user login..." << endl;
+            it->second.online = true;
+            it->second.connfd = clientfd;
+            reply = ChatMessage::create((int)CONN_REQ, (int)ACK); 
+         }
          break;
+      }
+
       case CONN_TERM:
-         // turn offline
-         // if active chat, send message to other chatter
+      {
+         // Turn user offline
+         it = users.find(user1);
+
+         if(it == users.end())
+         {
+            // CRITICAL ERROR
+            cout << "CRITICAL ERROR: USER NOT FOUND FOR CONNECTION TERMINATION..." << endl;
+            reply = ChatMessage::create((int)CONN_TERM, (int)NACK);
+            break;
+         }
+
+         if(it->second.chatting != "")
+         {
+            string chatting = it->second.chatting;
+            it2 = users.find(chatting);
+            if(it2 == users.end())
+            {
+               // CRITICAL ERROR
+               cout << "CRITICAL ERROR: USER NOT FOUND FOR CHAT TERMINATION..." << endl;
+            }
+            else
+            {
+               it2->second.chatting = "";
+               reply = ChatMessage::create((int)CHAT_STERM, (int)ACK, it2->second.username, user1, "");
+               ChatServer::Send(reply, it2->second.connfd);               
+            }
+            it->second.chatting = "";
+
+         }
+            
+         // Make user offline
+         it->second.online = false;
+
          reply = ChatMessage::create((int)CONN_TERM, (int)ACK);
          break;
+      }
+
       case CHAT_REQ:
+      {
+         it = users.find(user1);
+         if(it == users.end())
+         {
+            // CRITICAL ERROR
+            cout << "CRITICAL ERROR: USER NOT FOUND FOR CHAT REQUEST..." << endl;
+            //TODO: reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user);
+            break;
+         }
          // Check if user is online
          // if online:
-         reply = ChatMessage::create((int)CHAT_REQ, (int)ACK, user, ""); 
+         // After establishing connection...
+         reply = ChatMessage::create((int)CHAT_REQ, (int)ACK, user1, user2, ""); 
          // else
          // NACK
          break;
+      }
+
       case CHAT_TERM:
+      {
          // send term to other chatter
          reply = ChatMessage::create((int)CHAT_TERM, (int)ACK);
          break;
+      }
+
       case CHAT_MESSAGE:
+      {
          // check if other chatter online
          // if online
          // send message to the other chatter
          reply = ChatMessage::create((int)CHAT_MESSAGE, (int)ACK);
+      
          // else
          // NACK
          break;
+      }
+
+      case CHAT_SREQ:
+      {
+         cout << "Received ack for CHAT_SREQ" << endl;
+         break;
+      }
+      case CHAT_STERM:
+      {
+         cout << "Received ack for CHAT_STERM" << endl;
+         break;
+      }
+      case CHAT_SMESSAGE:
+      {
+         cout << "Received ack for CHAT_SMESSAGE" << endl;
+         break;
+      }
+
       default:
+      {
          cout << "Invalid operation not supported..." << endl;
          exit(INVALID_OPCODE);
+      }
    }
 
    return reply;

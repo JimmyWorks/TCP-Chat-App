@@ -64,8 +64,6 @@ int main(int argc, char *argv[])
    cout << "========================================" << endl << endl;
 
    string inStr, user, pass;
-   int inVal;
-
    while(true)
    {
       cout << "Login: ";
@@ -73,7 +71,7 @@ int main(int argc, char *argv[])
       cout << "Password: ";
       getline(cin, pass);
 
-      string msg = ChatMessage::create(CONN_REQ, user, pass);
+      string msg = ChatMessage::create(CONN_REQ, ACK, user, "", pass);
       chatclient.Send(msg);
    
       usleep(5000);

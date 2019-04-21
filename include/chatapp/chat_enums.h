@@ -22,6 +22,9 @@ enum Op_Codes
    CHAT_REQ,
    CHAT_TERM,
    CHAT_MESSAGE,
+   CHAT_SREQ,
+   CHAT_STERM,
+   CHAT_SMESSAGE,
    INVALID_OP
 };
 

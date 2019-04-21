@@ -7,13 +7,12 @@ using namespace std;
 class User
 {
    public:
-   string username, password;
+   string username, password, chatting;
+   bool online;
+   int connfd;
 
    User();
    User(string user, string password);
-
-   private:
-   bool online;
 };
 
 #endif
