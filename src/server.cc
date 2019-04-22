@@ -74,6 +74,7 @@ void ChatServer::Connection(int arg)
 	{
                 // Clear previous message
 	        memset(msg, 0, MAXPACKET_SIZE);
+
                 // Get new message
 		n = recv(clientfd, msg, MAXPACKET_SIZE, 0);
 		if(n==0)
@@ -82,10 +83,9 @@ void ChatServer::Connection(int arg)
 		   close(clientfd);
 		   break;
 		}
+
                 // Make sure buffer is null terminated
 		msg[n]=0;
-                // Print message received from client
-                cout << string(msg) << endl;
 
                 // Handle the request
                 string reply = ChatServer::HandleMessage(msg, clientfd);
@@ -98,17 +98,16 @@ string ChatServer::HandleMessage(string msg, int clientfd)
 {
    string reply = "";
 
-   int opcode = stoi(msg.substr(0, OPCODE_SIZE));
-   int ack = stoi(msg.substr(0+OPCODE_SIZE, ACK_SIZE));
-   string user1 = msg.substr(OPCODE_SIZE+ACK_SIZE, USER_SIZE);
-   string user2 = msg.substr(OPCODE_SIZE+ACK_SIZE+USER_SIZE, USER_SIZE);
-   string message = msg.substr((OPCODE_SIZE+ACK_SIZE+USER_SIZE+USER_SIZE), 
-                    (msg.length() - USER_SIZE - USER_SIZE - ACK_SIZE - OPCODE_SIZE));
+   ChatMessage obj = ChatMessage::deserialize(msg);
+   int opcode = obj.opcode;
+   int ack = obj.ack;
+   string user1 = obj.user1;
+   string user2 = obj.user2;
+   string message = obj.message;
 
-   user1 = ChatMessage::removePad(user1);
-   user2 = ChatMessage::removePad(user2);
-
-   cout << "Handling..." << endl;
+   cout << endl << "New packet:" << endl;
+   cout << msg << endl;
+   cout << "======================" << endl;
    cout << "op: " << opcode << endl;
    cout << "ack: " << ack << endl;
    cout << "user1: " << user1 << endl;
@@ -130,7 +129,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
                onlineusers += it->first + ";";
             }
          } 
-         reply = ChatMessage::create((int)HEARTBEAT, (int)ACK, user1, "", onlineusers);
+         reply = ChatMessage::serialize((int)HEARTBEAT, (int)ACK, user1, "", onlineusers);
          break;
       }
 
@@ -143,19 +142,19 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          if(it == users.end())
          {
             cout << "Could not find user..." << endl;
-            reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user1, "", "Invalid username.  Please try again...");
+            reply = ChatMessage::serialize((int)CONN_REQ, (int)NACK, user1, "", "Invalid username.  Please try again...");
          }
          else if(it->second.password != message)
          {
             cout << "Invalid password..." << endl; 
-            reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user1, "", "Invalid password.  Please try again...");
+            reply = ChatMessage::serialize((int)CONN_REQ, (int)NACK, user1, "", "Invalid password.  Please try again...");
          }
          else
          {
             cout << "Valid user login..." << endl;
             it->second.online = true;
             it->second.connfd = clientfd;
-            reply = ChatMessage::create((int)CONN_REQ, (int)ACK); 
+            reply = ChatMessage::serialize((int)CONN_REQ, (int)ACK); 
          }
          break;
       }
@@ -169,7 +168,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          {
             // CRITICAL ERROR
             cout << "CRITICAL ERROR: USER NOT FOUND FOR CONNECTION TERMINATION..." << endl;
-            reply = ChatMessage::create((int)CONN_TERM, (int)NACK);
+            reply = ChatMessage::serialize((int)CONN_TERM, (int)NACK);
             break;
          }
 
@@ -185,7 +184,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
             else
             {
                it2->second.chatting = "";
-               reply = ChatMessage::create((int)CHAT_STERM, (int)ACK, it2->second.username, user1, "");
+               reply = ChatMessage::serialize((int)CHAT_STERM, (int)ACK, it2->second.username, user1, "");
                ChatServer::Send(reply, it2->second.connfd);               
             }
             it->second.chatting = "";
@@ -195,7 +194,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          // Make user offline
          it->second.online = false;
 
-         reply = ChatMessage::create((int)CONN_TERM, (int)ACK);
+         reply = ChatMessage::serialize((int)CONN_TERM, (int)ACK);
          break;
       }
 
@@ -206,13 +205,13 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          {
             // CRITICAL ERROR
             cout << "CRITICAL ERROR: USER NOT FOUND FOR CHAT REQUEST..." << endl;
-            //TODO: reply = ChatMessage::create((int)CONN_REQ, (int)NACK, user);
+            //TODO: reply = ChatMessage::serialize((int)CONN_REQ, (int)NACK, user);
             break;
          }
          // Check if user is online
          // if online:
          // After establishing connection...
-         reply = ChatMessage::create((int)CHAT_REQ, (int)ACK, user1, user2, ""); 
+         reply = ChatMessage::serialize((int)CHAT_REQ, (int)ACK, user1, user2, ""); 
          // else
          // NACK
          break;
@@ -221,7 +220,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
       case CHAT_TERM:
       {
          // send term to other chatter
-         reply = ChatMessage::create((int)CHAT_TERM, (int)ACK);
+         reply = ChatMessage::serialize((int)CHAT_TERM, (int)ACK);
          break;
       }
 
@@ -230,7 +229,7 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          // check if other chatter online
          // if online
          // send message to the other chatter
-         reply = ChatMessage::create((int)CHAT_MESSAGE, (int)ACK);
+         reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK);
       
          // else
          // NACK

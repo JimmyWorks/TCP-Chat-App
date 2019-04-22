@@ -4,6 +4,8 @@
 enum Error_Codes
 {
    SUCCESS,
+   SERVER_CONN_FAILED,
+   INIT_ERROR,
    CLI_ERROR,
    FILE_ACCESS_ERROR,
    FILE_PARSE_ERROR,

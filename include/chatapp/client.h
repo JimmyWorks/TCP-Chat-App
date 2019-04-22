@@ -10,6 +10,9 @@
 #include <signal.h>
 #include <iostream>
 #include <unistd.h>
+#include <list>
+//#include <pthread.h>
+#include <semaphore.h>
 #include "chatapp/json_parser.h"
 #include "chatapp/chat_enums.h"
 #include "chatapp/message.h"
