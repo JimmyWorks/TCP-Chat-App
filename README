@@ -1,0 +1,37 @@
+# TCP-Chat-App
+Author: Jimmy Nguyen
+Email: Jimmy@Jimmyworks.net
+
+Chat App using TCP sockets in an OOP approach and client-server framework.  The client-side utilizes multi-threading with 3 threads to manage: (1) user command interface, (2) heartbeat sending, and (3) receiving messages from the server.  Threads are synchronized by a variety of semaphores as well as for mutual exclusion.  Json files are used by the server-side to pre-load users simulating a database for persistent data.  A json file is also used for the client-side for user config.  A JsonParser class is used to namespace a Parse method which utilizes a third-party library, rapidjson, for parsing json files.  Both client and server use respective ChatClient and ChatServer objects to create and maintain TCP connections with the server capable of handling multiple clients.  Both also feature signal handling for shutdown, ensuring all the connections are properly closed.  After server-side sets up a TCP socket and binds the socket, it listens for client connections and accepts connections in a loop.  New threads are created for each new connection which runs in a separate loop to handle that connection's client requests.  ChatMessage static methods and objects handle all message handling along with serialization and deserialization.  User objects are used by the server to manage users and user state.  Messages are handled by both client and server via opcode type.  
+
+For the client, the program flow is as follows:
+1. Login prompt for username
+2. Login prompt for password
+3. Both are checked for correctness by the server.
+   If correct, proceed.  Otherwise, repeat steps 1-2.
+4. User now enters chat command prompt
+   A. If in talk mode:
+      a. Can send message directly to talk mode user
+      b. Can exit talk mode
+   B. If not in talk mode:
+      a. Can check for active users
+      b. Can send user a direct message
+      c. Can enter talk mode with active user
+      d. Can ask for 'help' to see valid commands
+      e. Can logout
+      f. Can exit application
+
+To run:
+1. Navigate to src directory
+2. Execute: 'make'
+3. Navigate to bin directory
+4. Execute: './chat_service'
+5. Open another terminal and navigate to bin directory.
+6. Execute: './chat_client'
+7. Login using "Demo User" credentials displayed from
+   chat server terminal.
+8. Try commands.
+
+A third terminal can be opened and running the client
+to test more functionality such as checking active
+users, sending messages, and talk mode.
