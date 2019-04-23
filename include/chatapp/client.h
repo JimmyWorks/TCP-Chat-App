@@ -1,3 +1,10 @@
+/* TCP Chat App
+ * Author: Jimmy Nguyen
+ * Email: Jimmy@Jimmyworks.net
+ * 
+ * Header for ChatClient class 
+ */
+
 #ifndef CHAT_CLIENT_H
 #define CHAT_CLIENT_H
 
@@ -11,7 +18,6 @@
 #include <iostream>
 #include <unistd.h>
 #include <list>
-//#include <pthread.h>
 #include <semaphore.h>
 #include "chatapp/json_parser.h"
 #include "chatapp/chat_enums.h"
@@ -19,16 +25,18 @@
 
 using namespace std;
 
+// ChatClient
+// Instance created by chat client driver in main()
+// which established connection to server via TCP
+// as well as an interface for sending and receiving
+// messages from the server
 class ChatClient
 {
    private:
-     int sockfd;
-     struct sockaddr_in server;
+     int sockfd; // file descriptor
+     struct sockaddr_in server; // server's sock addr
 
    public:
-     bool online;
-     string username, otheruser;
-
      ChatClient();
      bool setup(string address, int port = SERV_PORT);
      bool Send(string message);

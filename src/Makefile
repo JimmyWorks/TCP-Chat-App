@@ -1,4 +1,4 @@
-#   TCP Chat Project
+#   TCP Chat App
 #   Author: Jimmy Nguyen
 #   Email: Jimmy@JimmyWorks.net
 #
@@ -7,7 +7,6 @@
 #   Commands:
 #   make		Make all executables.
 #   make clean		Clean all intermediate files
-#   make test		Test the program
 #   make backup 	Make a backup of the current project
 
 # Project name for make backup
@@ -55,10 +54,6 @@ $(CLIENT_EXE): $(CLIENT_OBJS)
  # make clean
 clean: 
 	rm -f *.o *.d*
-
- # make test
-test: clean_files
-	# TESTING ...
 
 Makefile: $(SRCS:.c=.d)
 

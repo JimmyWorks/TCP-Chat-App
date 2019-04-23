@@ -1,15 +1,20 @@
+/* TCP Chat App
+ * Author: Jimmy Nguyen
+ * Email: Jimmy@Jimmyworks.net
+ * 
+ * ChatClient implementation file
+ */
+
 #include "chatapp/client.h"
 
-// Chat Client Constructor
+// Constructor
 ChatClient::ChatClient()
 {
    sockfd = -1;
-   online = false;
-   username = "";
-   otheruser = "";
 }
 
-// Chat client 
+// Setup
+// Setup a TCP socket and attempt to connect to the server
 bool ChatClient::setup(string address, int port)
 {
   // For uninitialized client, setup endpoint for communication
@@ -28,21 +33,18 @@ bool ChatClient::setup(string address, int port)
      cout << "Created a new TCP socket with file descriptor: " << sockfd << endl;
   }
 
-  cout << "Creating struct for socket address and port: " 
-       << address << ":" << port << endl;
-  int result = inet_aton(address.c_str(), &server.sin_addr);  
-
-  // Check if successful
-  if(result == 0)
+  // Adding server address and port to server sockaddr_in
+  if(inet_aton(address.c_str(), &server.sin_addr) == 0)
   {
      cout << "Failed to convert address string to IPv4" << endl;
+     return false;
   }
-
-  // Define server sockaddr_in members
   server.sin_family = AF_INET;
   server.sin_port = htons(port);
 
+  // Connecting to the server
   // connect()
+  cout << "Establishing connection to the server..." << endl;
   int connfd = connect(sockfd, (struct sockaddr *)&server , sizeof(server));
 
   // Check if connection successful
@@ -52,32 +54,34 @@ bool ChatClient::setup(string address, int port)
      return false;
   }
   cout << "Connected to server!" << endl;
-
   return true;
 }
 
-//  
+// Send
+// Method for sending messages from this ChatClient
 bool ChatClient::Send(string message)
 {
+   // If file descriptor established
    if(sockfd != -1)
    {
+      // Return true if send message successful
       if(send(sockfd, message.c_str(), strlen(message.c_str()), 0) != -1)
          return true;
    }
    return false;
 }
 
-// Log in
-
-
 // Receive
+// Method for receiving messages at this ChatClient
 string ChatClient::Receive(int size)
 {
+        // Create buffer for message
         char buffer[size];
 	memset(&buffer[0], 0, sizeof(buffer));
 
+        // Receive the message or return null pointer
   	string reply;
-	if( recv(sockfd , buffer , size, 0) < 0)
+	if(recv(sockfd , buffer , size, 0) < 0)
   	{
 	    	cout << "receive failed!" << endl;
 		return nullptr;
@@ -86,6 +90,8 @@ string ChatClient::Receive(int size)
   	return buffer;
 }
 
+// Destroy
+// Properly closes open sockets
 void ChatClient::destroy()
 {
    cout << "Closing client and socket..." << endl;
