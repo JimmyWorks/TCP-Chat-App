@@ -89,7 +89,8 @@ void ChatServer::Connection(int arg)
 
                 // Handle the request
                 string reply = ChatServer::HandleMessage(msg, clientfd);
-                ChatServer::Send(reply, clientfd);
+                if(!reply.empty())
+                   ChatServer::Send(reply, clientfd);
 
 	 }
 }
@@ -172,25 +173,6 @@ string ChatServer::HandleMessage(string msg, int clientfd)
             break;
          }
 
-         if(it->second.chatting != "")
-         {
-            string chatting = it->second.chatting;
-            it2 = users.find(chatting);
-            if(it2 == users.end())
-            {
-               // CRITICAL ERROR
-               cout << "CRITICAL ERROR: USER NOT FOUND FOR CHAT TERMINATION..." << endl;
-            }
-            else
-            {
-               it2->second.chatting = "";
-               reply = ChatMessage::serialize((int)CHAT_STERM, (int)ACK, it2->second.username, user1, "");
-               ChatServer::Send(reply, it2->second.connfd);               
-            }
-            it->second.chatting = "";
-
-         }
-            
          // Make user offline
          it->second.online = false;
 
@@ -198,57 +180,70 @@ string ChatServer::HandleMessage(string msg, int clientfd)
          break;
       }
 
-      case CHAT_REQ:
+      case CHAT_MESSAGE:
       {
+         it2 = users.find(user2);
+
+         if(it2 == users.end())
+         {
+            cout << "CHAT ERROR: User2 does not exist..." << endl;
+            reply = user2 + " does not exist";
+            reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)NACK, user1, user2, reply);
+            break;
+         }
+         else if(!(it2->second.online))
+         {
+            cout << "User2 is not online..." << endl;
+            reply = user2 + " is no longer online";
+            reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)NACK, user1, user2, reply);
+         }
+         else
+         {
+            string msg = ChatMessage::serialize((int)CHAT_SMESSAGE, (int)ACK, user2, user1, message);
+            ChatServer::Send(msg, it2->second.connfd);
+
+            sem_wait(&(it2->second.sending_message));
+
+            string err;
+            sem_wait(&(it2->second.send_mess_mutex));
+               err = it2->second.send_mess_error;
+               it2->second.send_mess_error = "";
+            sem_post(&(it2->second.send_mess_mutex));
+            if(err.empty())
+            {
+               reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK, user1, user2, message);
+            }
+            else
+            {
+               reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK, user1, user2, err);
+            }
+         }
+         break;
+      }
+
+      case CHAT_SMESSAGE:
+      {
+         // Find the receiving user
          it = users.find(user1);
+
          if(it == users.end())
          {
             // CRITICAL ERROR
-            cout << "CRITICAL ERROR: USER NOT FOUND FOR CHAT REQUEST..." << endl;
-            //TODO: reply = ChatMessage::serialize((int)CONN_REQ, (int)NACK, user);
-            break;
+            cout << "CRITICAL ERROR: User1 not found..." << endl;
+            sem_wait(&(it->second.send_mess_mutex));
+               it->second.send_mess_error = user1 + " not found";
+            sem_post(&(it->second.send_mess_mutex));
+
          }
-         // Check if user is online
-         // if online:
-         // After establishing connection...
-         reply = ChatMessage::serialize((int)CHAT_REQ, (int)ACK, user1, user2, ""); 
-         // else
-         // NACK
-         break;
-      }
-
-      case CHAT_TERM:
-      {
-         // send term to other chatter
-         reply = ChatMessage::serialize((int)CHAT_TERM, (int)ACK);
-         break;
-      }
-
-      case CHAT_MESSAGE:
-      {
-         // check if other chatter online
-         // if online
-         // send message to the other chatter
-         reply = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK);
-      
-         // else
-         // NACK
-         break;
-      }
-
-      case CHAT_SREQ:
-      {
-         cout << "Received ack for CHAT_SREQ" << endl;
-         break;
-      }
-      case CHAT_STERM:
-      {
-         cout << "Received ack for CHAT_STERM" << endl;
-         break;
-      }
-      case CHAT_SMESSAGE:
-      {
-         cout << "Received ack for CHAT_SMESSAGE" << endl;
+         else if(ack == NACK)
+         {
+            sem_wait(&(it->second.send_mess_mutex));
+               it->second.send_mess_error = message;
+            sem_post(&(it->second.send_mess_mutex));
+         }
+ 
+         cout << "Got message ack from " << user1 << endl;
+         sem_post(&(it->second.sending_message));
          break;
       }
 

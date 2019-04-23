@@ -5,13 +5,27 @@ ChatClient chatclient;
 void end_client(int signum);
 void heartbeat(int arg);
 void receiver(int arg);
+void commandprompt();
 void exitApp();
+bool isOnline(string user);
 void handleMessage(string msg);
+void printHelp();
+void logout();
 
 list<string> activeUsers;
-sem_t login_result, online_mutex;
+sem_t login_result, login_mutex;
+sem_t logout_result, logout_mutex;
+sem_t online_mutex;
+sem_t sending_message, send_mess_mutex;
+sem_t active_user_mutex;
 string login_error = "";
+string logout_error = "";
+string send_mess_error = "";
 string user = "";
+
+bool talk_mode = false;
+string talk_user = "";
+bool loggedIn = false;
 
 int main(int argc, char *argv[])
 {
@@ -22,9 +36,41 @@ int main(int argc, char *argv[])
       cout << "Failed to initialize semaphore: login_result" << endl;
       exit(INIT_ERROR);
    }
+   if(sem_init(&login_mutex, 0, 1) == -1)
+   {
+      cout << "Failed to initialize semaphore: login_mutex" << endl;
+      exit(INIT_ERROR);
+   }
+   if(sem_init(&logout_result, 0, 0) == -1)
+   {
+      cout << "Failed to initialize semaphore: logout_result" << endl;
+      exit(INIT_ERROR);
+   }
+   if(sem_init(&logout_mutex, 0, 1) == -1)
+   {
+      cout << "Failed to initialize semaphore: logout_mutex" << endl;
+      exit(INIT_ERROR);
+   }
    if(sem_init(&online_mutex, 0, 1) == -1)
    {
       cout << "Failed to initialize semaphore: online_mutex" << endl;
+      exit(INIT_ERROR);
+   }
+
+   if(sem_init(&sending_message, 0, 0) == -1)
+   {
+      cout << "Failed to initialize semaphore: sending_message" << endl;
+      exit(INIT_ERROR);
+   }
+   if(sem_init(&send_mess_mutex, 0, 1) == -1)
+   {
+      cout << "Failed to initialize semaphore: send_mess_mutex" << endl;
+      exit(INIT_ERROR);
+   }
+
+   if(sem_init(&active_user_mutex, 0, 1) == -1)
+   {
+      cout << "Failed to initialize semaphore: active_user_mutex" << endl;
       exit(INIT_ERROR);
    }
 
@@ -67,7 +113,6 @@ int main(int argc, char *argv[])
    cout << "========================================" << endl << endl;
 
    string pass;
-   int selection = -1;
    while(true)
    {
       cout << "Login: ";
@@ -79,74 +124,220 @@ int main(int argc, char *argv[])
       chatclient.Send(msg);
    
       sem_wait(&login_result);
-      if(login_error.empty())
+
+      sem_wait(&online_mutex);
+         loggedIn = chatclient.online;
+      sem_post(&online_mutex);
+
+      if(loggedIn)
       {
          cout << "Welcome, " << user << "!" << endl << endl;
+         cout << "==========================" << endl;
+         cout << "Enter commands at any time. Some commands:" << endl;
+         printHelp();
 
-         while(true)
+         while(loggedIn)
          {
-            cout << "Options:" << endl;
-            cout << "==========================" << endl;
-            cout << "1. Check users online" << endl;
-            cout << "2. Start chat session" << endl;
-            cout << "3. Exit application" << endl << endl;
-            cout << "> ";
-            
-            cin >> selection;
-            switch(selection)
-            {
-               case 1:
-               {
-                  if(activeUsers.empty())
-                  {
-                     cout << endl << "No active users online." << endl << endl;
-                  }
-                  else
-                  {
-                     cout << endl << "Active users:" << endl;
-                     for(std::list<string>::iterator it = activeUsers.begin(); 
-                         it != activeUsers.end(); ++it)
-                        cout << " -  " << *it << endl << endl;
-                  }
-                  
-               }
-               break;
-
-               case 2:
-               {
-                  cout << "Selected to start chat session." << endl;
-               }
-               break;
-
-               case 3:
-               {
-                  cout << "Logging out user..." << endl;
-                  string msg = ChatMessage::serialize(CONN_TERM, ACK, user);
-                  chatclient.Send(msg);
-                  sem_wait(&login_result);
-                  exitApp();
-               }
-               break;
-
-               default:
-               {
-                  cout << "Invalid option selected.  Please try again..." << endl;
-               }
-            }
-            cout << endl;
-            cin.clear();
-         }
+            commandprompt();
+         } 
       }
       else
       {
-         cout << login_error << endl;
+         sem_wait(&login_mutex);
+            cout << login_error << endl;
+         sem_post(&login_mutex);
       }
-      activeUsers.clear();
-      cin.clear();
+      sem_wait(&active_user_mutex);
+         activeUsers.clear();
+      sem_post(&active_user_mutex);
+      cin.clear();   
    }
-
    return 0;
 }
+
+void commandprompt()
+{
+            string line = "";
+            getline(cin, line);
+            int index = line.find(" ");
+            string token = line.substr(0, index);  
+ 
+            if(talk_mode)
+            {
+               if(token.compare("/stop") == 0)
+               {
+                  cout << "[System] Stopped talking to " << talk_user << endl;
+                  talk_mode = false;
+                  talk_user = "";
+               }
+               else if(!isOnline(talk_user))
+               {
+                  cout << "[System] Stopped talking to " << talk_user << endl;
+                  cout << "[System] User no longer active" << endl;
+                  talk_mode = false;
+                  talk_user = "";
+               }
+               else
+               {
+                  string msg = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK, user, talk_user, line);
+                  chatclient.Send(msg);
+                  sem_wait(&sending_message);
+
+                  string err = "";
+                  sem_wait(&send_mess_mutex);
+                     err = send_mess_error;
+                     send_mess_error = "";
+                  sem_post(&send_mess_mutex);
+ 
+                  if(!err.empty())
+                     cout << "[System] ERROR: " << err << endl;
+               } 
+            }
+            else
+            {
+               line.erase(0, index+1);
+             
+               if(token.compare("/active") == 0)
+               {
+                  list<string> copy;
+                  sem_wait(&active_user_mutex);
+                     copy = activeUsers;
+                  sem_post(&active_user_mutex);
+                  if(copy.size() > 0)
+                  {
+                     cout << endl << "Active users:" << endl;
+                     for(std::list<string>::iterator it = copy.begin(); it != copy.end(); ++it)
+                         cout << " - " << *it << endl;
+                  }
+                  else
+                  {
+                     cout << "No active users to send messages" << endl;
+                  }
+               } 
+               else if(token.compare("/whisper") == 0)
+               {
+                  index = line.find(" ");
+                  string user2 = line.substr(0, index);  
+                  line.erase(0, index+1);
+
+                  // Check if user if online
+                  if(isOnline(user2))
+                  {
+                     string msg = ChatMessage::serialize((int)CHAT_MESSAGE, (int)ACK, user, user2, line);
+                     chatclient.Send(msg);
+                     sem_wait(&sending_message);
+
+                     string err = "";
+                     sem_wait(&send_mess_mutex);
+                        err = send_mess_error;
+                        send_mess_error = "";
+                     sem_post(&send_mess_mutex);
+ 
+                     if(!err.empty())
+                        cout << "[System] ERROR: " << err << endl;
+                  }
+                  else
+                  {
+                     cout << "[System] User, " << token << ", is not available" << endl;
+                  }
+               }
+               else if(token.compare("/talk") == 0)
+               {
+                  index = line.find(" ");
+                  string user2 = line.substr(0, index);  
+                  line.erase(0, index+1);
+
+                  // Check if user if online
+                  if(isOnline(user2))
+                  {
+                     cout << "[System] Now talking to " << user2 << endl;
+                     talk_user = user2;
+                     talk_mode = true;
+                  }
+                  else
+                  {
+                     cout << "[System] User is not available: " << user2 << endl;
+                  }
+               }
+               else if(token.compare("/stop") == 0)
+               {
+                  cout << "[System] Not currently talking to a user" << endl;
+               }
+               else if(token.compare("/exit") == 0)
+               {
+                  cout << "[System] Logging out..." << endl;
+                  logout();
+                  exitApp();
+               }
+               else if(token.compare("/logout") == 0)
+               {
+                  cout << "[System] Logging out..." << endl;
+                  logout(); 
+               }
+               else if(token.compare("/help") == 0)
+               {
+                  cout << "[Help] Commands:" << endl;
+                  printHelp();
+               }
+               else
+               {
+                  cout << "[System] Invalid operation" << endl;
+               }
+               
+               cin.clear();
+
+            } // if not talk_mode
+
+            cout << endl;
+            sem_wait(&online_mutex);
+               loggedIn = chatclient.online;
+            sem_post(&online_mutex);
+            cin.clear();
+}
+
+void logout()
+{
+   string msg = ChatMessage::serialize((int)CONN_TERM, (int)ACK, user);
+   chatclient.Send(msg);
+                  
+   sem_wait(&logout_result);
+
+   string err;
+   sem_wait(&logout_mutex);
+      err = logout_error;
+      logout_error = ""; 
+   sem_post(&logout_mutex);
+
+   if(!err.empty())
+      cout << "[System] Error logging out on server..." << endl;
+      cout << "[System] Ending application..." << endl;
+}
+
+void printHelp()
+{
+   cout << "/active - Displays all active users" << endl;
+   cout << "/whisper <user> <message> - Send message to user" << endl;
+   cout << "/talk <user> - Send all following messages to user" << endl;
+   cout << "/stop - Stop talking to user" << endl;
+   cout << "/exit - Exit the chat app" << endl;
+   cout << "/logout - Log out to switch users" << endl;
+   cout << "/help - Display these options again" << endl << endl;
+}
+
+bool isOnline(string user)
+{
+   list<string> copy;
+   sem_wait(&active_user_mutex);
+      copy = activeUsers;
+   sem_post(&active_user_mutex);
+
+   for(std::list<string>::iterator it = copy.begin(); it != copy.end(); ++it)
+   {
+      if((*it).compare(user) == 0)
+         return true;
+   }
+   return false;
+} 
 
 void end_client(int signum)
 {
@@ -172,7 +363,6 @@ void heartbeat(int arg)
          chatclient.Send(beat);
       }
    }
-   //return arg;
 }
 
 void receiver(int arg)
@@ -185,7 +375,6 @@ void receiver(int arg)
          handleMessage(rec);
       }
    }
-   //return arg;
 }
 
 void exitApp()
@@ -221,16 +410,22 @@ void handleMessage(string msg)
    {
       case HEARTBEAT:
       {
-         activeUsers.clear();
+         list<string> temp;
 
          // Get list of users online
          while(!message.empty())
          {
             int index = message.find(";");
-            string user = message.substr(0, index);
+            string usr = message.substr(0, index);
             message.erase(0, index+1);
-            activeUsers.push_back(user);
+            if(usr.compare(user) != 0)
+               temp.push_back(usr);
          }
+
+         sem_wait(&active_user_mutex);
+            activeUsers.clear();
+            activeUsers = temp;
+         sem_post(&active_user_mutex);
          break;
       }
 
@@ -238,14 +433,16 @@ void handleMessage(string msg)
       {
          if(ack == ACK)
          {
-            login_error = "";
-            sem_wait(&online_mutex);
+            sem_wait(&login_mutex);
+               login_error = "";
                chatclient.online = true;
-            sem_post(&online_mutex);
+            sem_post(&login_mutex);
          }
          else
          {
-            login_error = message;
+            sem_wait(&login_mutex);
+               login_error = message;
+            sem_post(&login_mutex);
          }
 
          sem_post(&login_result);
@@ -254,47 +451,40 @@ void handleMessage(string msg)
 
       case CONN_TERM:
       {
+         if(ack == NACK)
+         {
+         sem_wait(&logout_mutex);
+            logout_error = message;
+         sem_post(&logout_mutex);
+         }
+
          sem_wait(&online_mutex);
             chatclient.online = false;
          sem_post(&online_mutex);
-         login_error = "User logged out";
-         sem_post(&login_result);
-         break;
-      }
-      
-      case CHAT_REQ:
-      {
-         cout << "Got CHAT_REQ ack/nack..." << endl;
-         break;
-      }
-      
-      case CHAT_TERM:
-      {
-         cout << "Got CHAT_TERM ack/nack..." << endl;
+
+         sem_post(&logout_result);
          break;
       }
       
       case CHAT_MESSAGE:
       {
-         cout << "Got CHAT_MESSAGE ack/nack..." << endl;
-         break;
-      }
-      
-      case CHAT_SREQ:
-      {
-         cout << "Got new chat request!" << endl;
-         break;
-      }
+         if(ack == NACK)
+         {
+            sem_wait(&send_mess_mutex);
+               send_mess_error = message;
+            sem_post(&send_mess_mutex);
+            
+         }
 
-      case CHAT_STERM:
-      {
-         cout << "Chat user terminated the chat" << endl;
+         sem_post(&sending_message);
          break;
       }
-      
+       
       case CHAT_SMESSAGE:
       {
-         cout << "Incoming chat message!" << endl;
+         cout << "[" << user2 << "] " << message << endl;
+         string reply = ChatMessage::serialize((int)CHAT_SMESSAGE, (int)ACK, user1, user2, message);
+         chatclient.Send(reply);
          break;
       }
        
